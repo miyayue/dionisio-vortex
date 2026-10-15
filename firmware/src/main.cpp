@@ -3,6 +3,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
+#include <ezTime.h>
 
 // pino provisório
 #define DHTPIN 2
@@ -13,6 +14,10 @@
 String ssid = "";
 // senha da rede wifi
 String pswd = "";
+
+// timestamp e timezone
+String timestamp;
+Timezone brasil;
 
 // client wifi
 WiFiClient esp_client;
@@ -37,6 +42,11 @@ void setup()
   pswd.trim();
 
   wifiConnect();
+
+  // sincroniza o tempo
+  waitForSync();
+  // define a timezone
+  brasil.setLocation("America/Fortaleza");
 
   // inicializa o sensor dht
   dht.begin();
@@ -79,5 +89,6 @@ void update()
   // lê os valores medidos pelo dht
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
+  timestamp = brasil.dateTime(ISO8601);
   // TODO: tratar caso de leitura inválida para enviar ao dashboard
 }
