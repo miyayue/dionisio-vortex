@@ -2,6 +2,12 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <DHT.h>
+
+// pino provisório
+#define DHTPIN 2
+// tipo de dht
+#define DHTTYPE DHT22
 
 // nome da rede wifi
 String ssid = "";
@@ -11,8 +17,11 @@ String pswd = "";
 // client wifi
 WiFiClient esp_client;
 
+DHT dht(DHTPIN, DHTTYPE);
+
 // funções
 void wifiConnect() {};
+void update() {};
 
 void setup()
 {
@@ -28,6 +37,9 @@ void setup()
   pswd.trim();
 
   wifiConnect();
+
+  // inicializa o sensor dht
+  dht.begin();
 }
 
 void loop()
@@ -60,4 +72,12 @@ void wifiConnect()
     }
   }
   Serial.println("\nConectado à rede Wifi.");
+}
+
+void update()
+{
+  // lê os valores medidos pelo dht
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  // TODO: tratar caso de leitura inválida para enviar ao dashboard
 }
