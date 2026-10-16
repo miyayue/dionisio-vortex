@@ -104,4 +104,14 @@ void update()
   float humidity = dht.readHumidity();
   timestamp = brasil.dateTime(ISO8601);
   // TODO: tratar caso de leitura inválida para enviar ao dashboard
+
+  String payload;
+  JsonDocument doc;
+
+  doc["device_id"] = DEVICE_ID;
+  doc["temperature"] = temperature;
+  doc["humidity"] = humidity;
+  doc["timestamp"] = timestamp;
+
+  serializeJson(doc, payload);
 }
