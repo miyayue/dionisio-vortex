@@ -14,6 +14,12 @@
 
 // momento da atualização
 unsigned long update_time = 0;
+// momento de destravamento
+unsigned long unlock_time = 0;
+
+// flags
+bool door_open;
+bool lock_triggered;
 
 // nome da rede wifi
 String ssid = "";
@@ -30,8 +36,9 @@ WiFiClient esp_client;
 DHT dht(DHTPIN, DHTTYPE);
 
 // funções
-void wifiConnect() {};
-void update() {};
+void wifiConnect();
+void update();
+void unlock();
 
 void setup()
 {
@@ -55,6 +62,8 @@ void setup()
 
   // inicializa o sensor dht
   dht.begin();
+
+  // TODO: inicializar flags
 }
 
 void loop()
@@ -108,10 +117,20 @@ void update()
   String payload;
   JsonDocument doc;
 
+  // campos do payload
   doc["device_id"] = DEVICE_ID;
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
+  doc["door_open"] = door_open;
+  doc["lock_triggered"] = lock_triggered;
   doc["timestamp"] = timestamp;
+  // TODO: adicionar campos do payload em falta
 
   serializeJson(doc, payload);
+}
+
+void unlock()
+{
+  lock_triggered = true;
+  // TODO: adicionar comportamento específico do relé para abrir a trava
 }
