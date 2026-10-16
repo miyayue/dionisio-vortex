@@ -5,12 +5,17 @@
 #include <DHT.h>
 #include <ezTime.h>
 
-// pino provisório
-#define DHTPIN 2
+// pinos provisórios
+#define DHT_PIN 2
+#define BUZZ_PIN 9
+
+// TODO: atualizar para os pinos definitivos
+
 // tipo de dht
-#define DHTTYPE DHT22
+#define DHT_TYPE DHT22
 // id do dispositivo
 #define DEVICE_ID "dionisio-01"
+#define CONNECTION_STATUS "conectado"
 
 // momento da atualização
 unsigned long update_time = 0;
@@ -33,11 +38,12 @@ Timezone brasil;
 // client wifi
 WiFiClient esp_client;
 
-DHT dht(DHTPIN, DHTTYPE);
+DHT dht(DHT_PIN, DHT_TYPE);
 
 // funções
 void wifiConnect();
 void update();
+void rfid_access();
 void unlock();
 
 void setup()
@@ -52,6 +58,9 @@ void setup()
   Serial.println("Insira a senha da rede Wifi: ");
   pswd = Serial.readStringUntil('\n');
   pswd.trim();
+
+  // configuração dos pinos
+  pinMode(BUZZ_PIN, OUTPUT);
 
   wifiConnect();
 
@@ -106,6 +115,24 @@ void wifiConnect()
   Serial.println("\nConectado à rede Wifi.");
 }
 
+void rfid_access()
+{
+  // temporario
+  bool access_granted = true;
+  // TODO: verificação do acesso
+
+  if (access_granted)
+  {
+    unlock();
+  }
+  else
+  {
+    tone(BUZZ_PIN, 3000, 1500);
+  }
+  noTone(BUZZ_PIN);
+  // TODO: colocar valores definitivos para o buzzer
+}
+
 void update()
 {
   // lê os valores medidos pelo dht
@@ -124,6 +151,7 @@ void update()
   doc["door_open"] = door_open;
   doc["lock_triggered"] = lock_triggered;
   doc["timestamp"] = timestamp;
+  doc["connection_status"] = CONNECTION_STATUS;
   // TODO: adicionar campos do payload em falta
 
   serializeJson(doc, payload);
@@ -133,4 +161,7 @@ void unlock()
 {
   lock_triggered = true;
   // TODO: adicionar comportamento específico do relé para abrir a trava
+
+  tone(BUZZ_PIN, 1000, 1000);
+  // TODO: colocar valores definitivos para o buzzer
 }
