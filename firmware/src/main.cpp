@@ -9,6 +9,11 @@
 #define DHTPIN 2
 // tipo de dht
 #define DHTTYPE DHT22
+// id do dispositivo
+#define DEVICE_ID "dionisio-01"
+
+// momento da atualização
+unsigned long update_time = 0;
 
 // nome da rede wifi
 String ssid = "";
@@ -59,6 +64,14 @@ void loop()
   {
     Serial.println("Conexão com rede WiFi perdida. Tentando reconectar.");
     wifiConnect();
+  }
+
+  unsigned long time_now = millis();
+  // atualiza dados para o dashboard a cada 20 segundos
+  if (update_time == 0 || time_now - update_time >= 20000)
+  {
+    update_time = time_now;
+    update();
   }
 }
 
