@@ -5,9 +5,19 @@
 #include <DHT.h>
 #include <ezTime.h>
 
-// pinos provisórios
-#define DHT_PIN 2
-#define BUZZ_PIN 9
+// pinos
+#define DHT_PIN 27
+#define BUZZ_PIN 32
+#define LED_PIN 33
+#define RS_PIN 14
+#define RELAY_PIN 26
+
+// pinos do rfid
+#define SDA_PIN 5
+#define SCK_PIN 18
+#define MISO_PIN 19
+#define MOSI_PIN 23
+#define RST_PIN 22
 
 // TODO: atualizar para os pinos definitivos
 
@@ -24,7 +34,6 @@ unsigned long unlock_time = 0;
 
 // flags
 bool door_open;
-bool lock_triggered;
 
 // nome da rede wifi
 String ssid = "";
@@ -46,6 +55,8 @@ void update();
 void rfid_access();
 void unlock();
 
+void debug();
+
 void setup()
 {
   Serial.begin(115200);
@@ -61,6 +72,10 @@ void setup()
 
   // configuração dos pinos
   pinMode(BUZZ_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(RS_PIN, INPUT_PULLUP);
+  pinMode(RELAY_PIN, OUTPUT);
+  // TODO: configurar pinos do rfid
 
   wifiConnect();
 
@@ -89,7 +104,8 @@ void loop()
   if (update_time == 0 || time_now - update_time >= 20000)
   {
     update_time = time_now;
-    update();
+    // update();
+    debug();
   }
 }
 
@@ -149,7 +165,6 @@ void update()
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["door_open"] = door_open;
-  doc["lock_triggered"] = lock_triggered;
   doc["timestamp"] = timestamp;
   doc["connection_status"] = CONNECTION_STATUS;
   // TODO: adicionar campos do payload em falta
@@ -159,9 +174,18 @@ void update()
 
 void unlock()
 {
-  lock_triggered = true;
   // TODO: adicionar comportamento específico do relé para abrir a trava
+}
 
-  tone(BUZZ_PIN, 1000, 1000);
-  // TODO: colocar valores definitivos para o buzzer
+void debug()
+{
+  Serial.println("Lendo valores:");
+
+  Serial.println("temp: ");
+  Serial.println(dht.readTemperature());
+
+  Serial.println("umid: ");
+  Serial.println(dht.readHumidity());
+
+  digitalWrite(LED_PIN, HIGH);
 }
