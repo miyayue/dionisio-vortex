@@ -3,7 +3,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
-#include <ezTime.h>
+#include <ESPDateTime.h>
 
 // pinos
 #define DHT_PIN 27
@@ -38,10 +38,6 @@ String ssid = "";
 // senha da rede wifi
 String pswd = "";
 
-// timestamp e timezone
-String timestamp;
-Timezone brasil;
-
 // client wifi
 WiFiClient esp_client;
 
@@ -49,6 +45,7 @@ DHT dht(DHT_PIN, DHT_TYPE);
 
 // funções
 void wifiConnect();
+void setupDateTime();
 void update();
 void rfid_access();
 void unlock();
@@ -77,10 +74,7 @@ void setup()
 
   wifiConnect();
 
-  // sincroniza o tempo
-  // waitForSync();
-  // define a timezone
-  // brasil.setLocation("America/Fortaleza");
+  setupDateTime();
 
   // inicializa o sensor dht
   dht.begin();
@@ -129,6 +123,13 @@ void wifiConnect()
   Serial.println("\nConectado à rede Wifi.");
 }
 
+void setupDateTime()
+{
+  // timezone GMT-3
+  DateTime.setTimeZone("<-03>3");
+  DateTime.begin();
+}
+
 void rfid_access()
 {
   // temporario
@@ -152,8 +153,7 @@ void update()
   // lê os valores medidos pelo dht
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
-  timestamp = brasil.dateTime(ISO8601);
-  // TODO: tratar caso de leitura inválida para enviar ao dashboard
+  //  TODO: tratar caso de leitura inválida para enviar ao dashboard?
 
   String payload;
   JsonDocument doc;
@@ -163,7 +163,7 @@ void update()
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["door_open"] = door_open;
-  doc["timestamp"] = timestamp;
+  // doc["timestamp"] = timestamp;
   doc["connection_status"] = CONNECTION_STATUS;
   // TODO: adicionar campos do payload em falta
 
@@ -184,6 +184,9 @@ void testing()
 
   Serial.print("umid: ");
   Serial.println(dht.readHumidity());
+
+  Serial.print("timestamp: ");
+  Serial.println(DateTime.toString());
 
   digitalWrite(LED_PIN, HIGH);
 }
