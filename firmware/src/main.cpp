@@ -19,8 +19,6 @@
 #define MOSI_PIN 23
 #define RST_PIN 22
 
-// TODO: atualizar para os pinos definitivos
-
 // tipo de dht
 #define DHT_TYPE DHT22
 // id do dispositivo
@@ -55,20 +53,20 @@ void update();
 void rfid_access();
 void unlock();
 
-void debug();
+void testing();
 
 void setup()
 {
   Serial.begin(115200);
   Serial.setTimeout(120000);
 
-  Serial.println("Insira o nome da rede Wifi: ");
-  ssid = Serial.readStringUntil('\n');
-  ssid.trim();
+  // Serial.println("Insira o nome da rede Wifi: ");
+  // ssid = Serial.readStringUntil('\n');
+  // ssid.trim();
 
-  Serial.println("Insira a senha da rede Wifi: ");
-  pswd = Serial.readStringUntil('\n');
-  pswd.trim();
+  // Serial.println("Insira a senha da rede Wifi: ");
+  // pswd = Serial.readStringUntil('\n');
+  // pswd.trim();
 
   // configuração dos pinos
   pinMode(BUZZ_PIN, OUTPUT);
@@ -80,9 +78,9 @@ void setup()
   wifiConnect();
 
   // sincroniza o tempo
-  waitForSync();
+  // waitForSync();
   // define a timezone
-  brasil.setLocation("America/Fortaleza");
+  // brasil.setLocation("America/Fortaleza");
 
   // inicializa o sensor dht
   dht.begin();
@@ -105,7 +103,7 @@ void loop()
   {
     update_time = time_now;
     // update();
-    debug();
+    testing();
   }
 }
 
@@ -122,7 +120,7 @@ void wifiConnect()
     delay(500);
     Serial.print(".");
 
-    if ((millis() - start_time) > 10000)
+    if ((millis() - start_time) > 100000)
     {
       Serial.println("A conexão falhou. Verifique as credenciais de WiFi e reinicie o programa.");
       return;
@@ -177,14 +175,14 @@ void unlock()
   // TODO: adicionar comportamento específico do relé para abrir a trava
 }
 
-void debug()
+void testing()
 {
   Serial.println("Lendo valores:");
 
-  Serial.println("temp: ");
+  Serial.print("temp: ");
   Serial.println(dht.readTemperature());
 
-  Serial.println("umid: ");
+  Serial.print("umid: ");
   Serial.println(dht.readHumidity());
 
   digitalWrite(LED_PIN, HIGH);
