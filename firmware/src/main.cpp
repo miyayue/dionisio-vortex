@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <DHT.h>
 #include <ESPDateTime.h>
+#include <HardwareSerial.h>
 
 // pinos
 #define DHT_PIN 27
@@ -12,12 +13,9 @@
 #define RS_PIN 14
 #define RELAY_PIN 26
 
-// pinos do rfid
-#define SDA_PIN 5
-#define SCK_PIN 18
-#define MISO_PIN 19
-#define MOSI_PIN 23
-#define RST_PIN 22
+// pinos do rfid (rx não é utilizado)
+#define RX_PIN 17
+#define TX_PIN 16
 
 // tipo de dht
 #define DHT_TYPE DHT22
@@ -34,20 +32,28 @@ unsigned long unlock_time = 0;
 bool door_open;
 
 // nome da rede wifi
-String ssid = "";
+String ssid = "yue";
 // senha da rede wifi
-String pswd = "";
+String pswd = "frutaskk";
+
+// tag do cartão da adega
+String card_tag = "␂61005209645E␃";
 
 // client wifi
 WiFiClient esp_client;
 
 DHT dht(DHT_PIN, DHT_TYPE);
 
+// configura o serial para o rfid
+HardwareSerial rfid(1);
+
 // funções
 void wifiConnect();
 void setupDateTime();
 void update();
-void rfid_access();
+bool rfid_auth();
+void access_granted();
+void access_denied();
 void unlock();
 
 void testing();
@@ -78,6 +84,8 @@ void setup()
 
   // inicializa o sensor dht
   dht.begin();
+  // inicializa o rfid
+  rfid.begin(9600, SERIAL_8N1, TX_PIN, RX_PIN);
 
   // TODO: inicializar flags
 }
@@ -89,6 +97,19 @@ void loop()
   {
     Serial.println("Conexão com rede WiFi perdida. Tentando reconectar.");
     wifiConnect();
+  }
+
+  // checa se o rfid detectou um cartao
+  if (rfid.available() > 0)
+  {
+    if (rfid_auth())
+    {
+      // access_granted();
+    }
+    else
+    {
+      // access_denied();
+    }
   }
 
   unsigned long time_now = millis();
@@ -130,22 +151,26 @@ void setupDateTime()
   DateTime.begin();
 }
 
-void rfid_access()
+bool rfid_auth()
 {
-  // temporario
-  bool access_granted = true;
-  // TODO: verificação do acesso
+  // armazena a tag lida
+  String tag = "";
+  while (rfid.available() > 0)
+  {
+    char c = rfid.read();
+    tag += c;
+  }
+  Serial.print("Tag detected: ");
+  Serial.println(tag);
 
-  if (access_granted)
+  // retorna se o acesso é liberado ou negado
+  if (tag.compareTo(card_tag) == 0)
   {
-    unlock();
+    Serial.println("acesso liberado");
+    return true;
   }
-  else
-  {
-    tone(BUZZ_PIN, 3000, 1500);
-  }
-  noTone(BUZZ_PIN);
-  // TODO: colocar valores definitivos para o buzzer
+  Serial.println("acesso negado");
+  return false;
 }
 
 void update()
@@ -153,6 +178,7 @@ void update()
   // lê os valores medidos pelo dht
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
+  String timestamp = DateTime.toString();
   //  TODO: tratar caso de leitura inválida para enviar ao dashboard?
 
   String payload;
@@ -163,7 +189,7 @@ void update()
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["door_open"] = door_open;
-  // doc["timestamp"] = timestamp;
+  doc["timestamp"] = timestamp;
   doc["connection_status"] = CONNECTION_STATUS;
   // TODO: adicionar campos do payload em falta
 
