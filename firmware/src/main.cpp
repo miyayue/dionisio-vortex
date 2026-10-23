@@ -32,12 +32,12 @@ unsigned long unlock_time = 0;
 bool door_open;
 
 // nome da rede wifi
-String ssid = "yue";
+String ssid = "";
 // senha da rede wifi
-String pswd = "frutaskk";
+String pswd = "";
 
 // tag do cartão da adega
-String card_tag = "␂61005209645E␃";
+uint8_t card_tag[] = {0x02, 0x36, 0x31, 0x30, 0x30, 0x35, 0x32, 0x30, 0x39, 0x36, 0x34, 0x35, 0x45, 0x03};
 
 // client wifi
 WiFiClient esp_client;
@@ -153,18 +153,28 @@ void setupDateTime()
 
 bool rfid_auth()
 {
-  // armazena a tag lida
-  String tag = "";
-  while (rfid.available() > 0)
-  {
-    char c = rfid.read();
-    tag += c;
-  }
-  Serial.print("Tag detected: ");
-  Serial.println(tag);
+  // armazena os bytes da tag
+  uint8_t tag[14];
+  int byte_index = 0;
 
-  // retorna se o acesso é liberado ou negado
-  if (tag.compareTo(card_tag) == 0)
+  delay(100);
+  while (rfid.available() && byte_index < 14)
+  {
+    uint8_t byte = rfid.read();
+
+    // inicia a tag no byte 2 (head da tag)
+    if (byte == 2)
+    {
+      byte_index = 0;
+    }
+
+    tag[byte_index] = byte;
+    byte_index++;
+  }
+  delay(500);
+
+  // compara a tag lida com a tag autorizada para permitir ou negar o acesso
+  if (memcmp(tag, card_tag, sizeof(tag)) == 0)
   {
     Serial.println("acesso liberado");
     return true;
