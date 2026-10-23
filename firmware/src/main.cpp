@@ -32,9 +32,9 @@ unsigned long unlock_time = 0;
 bool door_open;
 
 // nome da rede wifi
-String ssid = "";
+String ssid = "yue";
 // senha da rede wifi
-String pswd = "";
+String pswd = "frutaskk";
 
 // tag do cartão da adega
 uint8_t card_tag[] = {0x02, 0x36, 0x31, 0x30, 0x30, 0x35, 0x32, 0x30, 0x39, 0x36, 0x34, 0x35, 0x45, 0x03};
@@ -51,10 +51,10 @@ HardwareSerial rfid(1);
 void wifiConnect();
 void setupDateTime();
 void update();
-bool rfid_auth();
-void access_granted();
-void access_denied();
+void relay_safety();
+void rfid_auth();
 void unlock();
+void access_denied();
 
 void testing();
 
@@ -76,7 +76,7 @@ void setup()
   pinMode(LED_PIN, OUTPUT);
   pinMode(RS_PIN, INPUT_PULLUP);
   pinMode(RELAY_PIN, OUTPUT);
-  // TODO: configurar pinos do rfid
+  digitalWrite(RELAY_PIN, HIGH);
 
   wifiConnect();
 
@@ -99,17 +99,13 @@ void loop()
     wifiConnect();
   }
 
+  // segurança do relé
+  relay_safety();
+
   // checa se o rfid detectou um cartao
   if (rfid.available() > 0)
   {
-    if (rfid_auth())
-    {
-      // access_granted();
-    }
-    else
-    {
-      // access_denied();
-    }
+    rfid_auth();
   }
 
   unsigned long time_now = millis();
@@ -151,7 +147,17 @@ void setupDateTime()
   DateTime.begin();
 }
 
-bool rfid_auth()
+void relay_safety()
+{
+  // desliga o gpio do relé apos 1,5 segundo ou mais (idealmente logo apos ultrapassar
+  // 1,5 s e antes de atingir 3 s)
+  if (millis() - unlock_time > 1500 && digitalRead(RELAY_PIN) == LOW)
+  {
+    digitalWrite(RELAY_PIN, HIGH);
+  }
+}
+
+void rfid_auth()
 {
   // armazena os bytes da tag
   uint8_t tag[14];
@@ -177,10 +183,19 @@ bool rfid_auth()
   if (memcmp(tag, card_tag, sizeof(tag)) == 0)
   {
     Serial.println("acesso liberado");
-    return true;
+    unlock();
+    return;
   }
   Serial.println("acesso negado");
-  return false;
+  // access_denied();
+  return;
+}
+
+void unlock()
+{
+  // TODO: adicionar comportamento específico do relé para abrir a trava
+  unlock_time = millis();
+  digitalWrite(RELAY_PIN, LOW);
 }
 
 void update()
@@ -204,11 +219,6 @@ void update()
   // TODO: adicionar campos do payload em falta
 
   serializeJson(doc, payload);
-}
-
-void unlock()
-{
-  // TODO: adicionar comportamento específico do relé para abrir a trava
 }
 
 void testing()
