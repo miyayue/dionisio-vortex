@@ -32,9 +32,9 @@ unsigned long unlock_time = 0;
 bool door_open;
 
 // nome da rede wifi
-String ssid = "yue";
+String ssid = "";
 // senha da rede wifi
-String pswd = "frutaskk";
+String pswd = "";
 
 // tag do cartão da adega
 uint8_t card_tag[] = {0x02, 0x36, 0x31, 0x30, 0x30, 0x35, 0x32, 0x30, 0x39, 0x36, 0x34, 0x35, 0x45, 0x03};
@@ -52,9 +52,11 @@ void wifiConnect();
 void setupDateTime();
 void update();
 void relay_safety();
+void door_status();
 void rfid_auth();
 void unlock();
 void access_denied();
+void warning();
 
 void testing();
 
@@ -76,6 +78,7 @@ void setup()
   pinMode(LED_PIN, OUTPUT);
   pinMode(RS_PIN, INPUT_PULLUP);
   pinMode(RELAY_PIN, OUTPUT);
+
   digitalWrite(RELAY_PIN, HIGH);
 
   wifiConnect();
@@ -87,6 +90,8 @@ void setup()
   // inicializa o rfid
   rfid.begin(9600, SERIAL_8N1, TX_PIN, RX_PIN);
 
+  // inicializa o estado da porta
+  door_status();
   // TODO: inicializar flags
 }
 
@@ -101,9 +106,13 @@ void loop()
 
   // segurança do relé
   relay_safety();
+  // checa o status da porta
+  door_status();
+  // emite alertas se necessário
+  warning();
 
-  // checa se o rfid detectou um cartao
-  if (rfid.available() > 0)
+  // checa se o rfid detectou um cartao com a porta fechada
+  if (rfid.available() > 0 && !door_open)
   {
     rfid_auth();
   }
@@ -157,6 +166,18 @@ void relay_safety()
   }
 }
 
+void door_status()
+{
+  if (digitalRead(RS_PIN) == HIGH)
+  {
+    door_open = true;
+  }
+  else
+  {
+    door_open = false;
+  }
+}
+
 void rfid_auth()
 {
   // armazena os bytes da tag
@@ -193,9 +214,17 @@ void rfid_auth()
 
 void unlock()
 {
-  // TODO: adicionar comportamento específico do relé para abrir a trava
   unlock_time = millis();
   digitalWrite(RELAY_PIN, LOW);
+}
+
+void warning()
+{
+  if (door_open && millis() - unlock_time > 60000)
+  {
+    Serial.println("alerta: porta aberta +1min");
+    // TODO: comportamento do buzzer para avisar da porta aberta
+  }
 }
 
 void update()
@@ -233,6 +262,9 @@ void testing()
 
   Serial.print("timestamp: ");
   Serial.println(DateTime.toString());
+
+  Serial.print("porta aberta: ");
+  Serial.println(door_open);
 
   digitalWrite(LED_PIN, HIGH);
 }
