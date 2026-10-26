@@ -5,6 +5,7 @@
 #include <DHT.h>
 #include <ESPDateTime.h>
 #include <HardwareSerial.h>
+#include <LiquidCrystal_I2C.h>
 
 // pinos
 #define DHT_PIN 27
@@ -16,6 +17,11 @@
 // pinos do rfid (rx não é utilizado)
 #define RX_PIN 17
 #define TX_PIN 16
+
+// dados do display
+#define LCD_COLUMNS 16
+#define LCD_ROWS 2
+#define LCD_ADDRESS 0x27
 
 // tipo de dht
 #define DHT_TYPE DHT22
@@ -42,6 +48,8 @@ uint8_t card_tag[] = {0x02, 0x36, 0x31, 0x30, 0x30, 0x35, 0x32, 0x30, 0x39, 0x36
 // client wifi
 WiFiClient esp_client;
 
+LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLUMNS, LCD_ROWS);
+
 DHT dht(DHT_PIN, DHT_TYPE);
 
 // configura o serial para o rfid
@@ -50,13 +58,14 @@ HardwareSerial rfid(1);
 // funções
 void wifiConnect();
 void setupDateTime();
-void update();
+void update_display();
 void relay_safety();
 void door_status();
 void rfid_auth();
 void unlock();
 void access_denied();
 void warning();
+void update();
 
 void testing();
 
@@ -85,6 +94,10 @@ void setup()
 
   setupDateTime();
 
+  // inicializa e liga a luz do display
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
   // inicializa o sensor dht
   dht.begin();
   // inicializa o rfid
@@ -118,10 +131,12 @@ void loop()
   }
 
   unsigned long time_now = millis();
-  // atualiza dados para o dashboard a cada 20 segundos
+  // atualiza dados a cada 20 segundos
   if (update_time == 0 || time_now - update_time >= 20000)
   {
     update_time = time_now;
+    // atualiza o display
+    update_display();
     // update();
     testing();
   }
@@ -154,6 +169,16 @@ void setupDateTime()
   // timezone GMT-3
   DateTime.setTimeZone("<-03>3");
   DateTime.begin();
+}
+
+void update_display()
+{
+  // posiciona o cursor para escrever a temperatura
+  lcd.setCursor(4, 0);
+  lcd.printf("T: %.2f", dht.readTemperature());
+  // posiciona o cursor para escrever a umidade
+  lcd.setCursor(4, 1);
+  lcd.printf("U: %.2f", dht.readHumidity());
 }
 
 void relay_safety()
