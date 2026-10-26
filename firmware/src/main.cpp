@@ -9,8 +9,8 @@
 
 // pinos
 #define DHT_PIN 27
-#define BUZZ_PIN 32
-#define LED_PIN 33
+#define GREEN_LED_PIN 32
+#define RED_LED_PIN 33
 #define RS_PIN 14
 #define RELAY_PIN 26
 
@@ -55,10 +55,13 @@ DHT dht(DHT_PIN, DHT_TYPE);
 // configura o serial para o rfid
 HardwareSerial rfid(1);
 
+float temperature = 15.0;
+float humidity = 50.0;
+
 // funções
 void wifiConnect();
 void setupDateTime();
-void update_display();
+void update_display_data();
 void relay_safety();
 void door_status();
 void rfid_auth();
@@ -74,25 +77,13 @@ void setup()
   Serial.begin(115200);
   Serial.setTimeout(120000);
 
-  // Serial.println("Insira o nome da rede Wifi: ");
-  // ssid = Serial.readStringUntil('\n');
-  // ssid.trim();
-
-  // Serial.println("Insira a senha da rede Wifi: ");
-  // pswd = Serial.readStringUntil('\n');
-  // pswd.trim();
-
   // configuração dos pinos
-  pinMode(BUZZ_PIN, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
   pinMode(RS_PIN, INPUT_PULLUP);
   pinMode(RELAY_PIN, OUTPUT);
 
   digitalWrite(RELAY_PIN, HIGH);
-
-  wifiConnect();
-
-  setupDateTime();
 
   // inicializa e liga a luz do display
   lcd.init();
@@ -106,6 +97,9 @@ void setup()
   // inicializa o estado da porta
   door_status();
   // TODO: inicializar flags
+
+  wifiConnect();
+  setupDateTime();
 }
 
 void loop()
@@ -115,8 +109,11 @@ void loop()
   {
     Serial.println("Conexão com rede WiFi perdida. Tentando reconectar.");
     wifiConnect();
+    setupDateTime();
   }
 
+  // atualiza o display
+  update_display_data();
   // segurança do relé
   relay_safety();
   // checa o status da porta
@@ -128,6 +125,11 @@ void loop()
   if (rfid.available() > 0 && !door_open)
   {
     rfid_auth();
+    // descartar leituras adicionais
+    while (rfid.available())
+    {
+      rfid.read();
+    }
   }
 
   unsigned long time_now = millis();
@@ -135,8 +137,6 @@ void loop()
   if (update_time == 0 || time_now - update_time >= 20000)
   {
     update_time = time_now;
-    // atualiza o display
-    update_display();
     // update();
     testing();
   }
@@ -150,18 +150,19 @@ void wifiConnect()
   unsigned long start_time = millis();
 
   Serial.print("Conectando com a rede WiFi");
-  while (WiFi.status() != WL_CONNECTED)
+  while ((millis() - start_time) < 500)
   {
     delay(500);
     Serial.print(".");
 
-    if ((millis() - start_time) > 100000)
+    if (WiFi.status() == WL_CONNECTED)
     {
-      Serial.println("A conexão falhou. Verifique as credenciais de WiFi e reinicie o programa.");
+      Serial.println("\nConectado à rede Wifi.");
       return;
     }
   }
-  Serial.println("\nConectado à rede Wifi.");
+
+  Serial.println("A conexão falhou. Verifique as credenciais de WiFi e reinicie o programa.");
 }
 
 void setupDateTime()
@@ -171,21 +172,18 @@ void setupDateTime()
   DateTime.begin();
 }
 
-void update_display()
+void update_display_data()
 {
-  // posiciona o cursor para escrever a temperatura
-  lcd.setCursor(4, 0);
-  lcd.printf("T: %.2f", dht.readTemperature());
-  // posiciona o cursor para escrever a umidade
-  lcd.setCursor(4, 1);
-  lcd.printf("U: %.2f", dht.readHumidity());
+  // posiciona o cursor
+  lcd.setCursor(0, 0);
+  lcd.printf("T: %.1f  U: %.1f", dht.readTemperature(), dht.readHumidity());
 }
 
 void relay_safety()
 {
   // desliga o gpio do relé apos 1,5 segundo ou mais (idealmente logo apos ultrapassar
   // 1,5 s e antes de atingir 3 s)
-  if (millis() - unlock_time > 1500 && digitalRead(RELAY_PIN) == LOW)
+  if (millis() - unlock_time > 500 && digitalRead(RELAY_PIN) == LOW)
   {
     digitalWrite(RELAY_PIN, HIGH);
   }
@@ -195,11 +193,24 @@ void door_status()
 {
   if (digitalRead(RS_PIN) == HIGH)
   {
+    digitalWrite(RED_LED_PIN, LOW);
     door_open = true;
+
+    // feedback no display
+    update_display_data();
+    lcd.setCursor(0, 1);
+    lcd.print("Porta aberta    ");
   }
   else
   {
+    digitalWrite(GREEN_LED_PIN, LOW);
+    digitalWrite(RED_LED_PIN, HIGH);
     door_open = false;
+
+    // feedback no display
+    update_display_data();
+    lcd.setCursor(0, 1);
+    lcd.print("Porta fechada   ");
   }
 }
 
@@ -233,7 +244,7 @@ void rfid_auth()
     return;
   }
   Serial.println("acesso negado");
-  // access_denied();
+  access_denied();
   return;
 }
 
@@ -241,6 +252,22 @@ void unlock()
 {
   unlock_time = millis();
   digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, HIGH);
+
+  // feedback no display
+  update_display_data();
+  lcd.setCursor(0, 1);
+  lcd.print("Acesso liberado ");
+  delay(1000);
+}
+
+void access_denied()
+{
+  // feedback no display
+  update_display_data();
+  lcd.setCursor(0, 1);
+  lcd.print("Acesso negado   ");
+  delay(1000);
 }
 
 void warning()
@@ -255,8 +282,8 @@ void warning()
 void update()
 {
   // lê os valores medidos pelo dht
-  float temperature = dht.readTemperature();
-  float humidity = dht.readHumidity();
+  temperature = dht.readTemperature();
+  humidity = dht.readHumidity();
   String timestamp = DateTime.toString();
   //  TODO: tratar caso de leitura inválida para enviar ao dashboard?
 
@@ -268,7 +295,7 @@ void update()
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["door_open"] = door_open;
-  doc["timestamp"] = timestamp;
+  doc["timestamp"] = DateTime.toString();
   doc["connection_status"] = CONNECTION_STATUS;
   // TODO: adicionar campos do payload em falta
 
@@ -290,6 +317,4 @@ void testing()
 
   Serial.print("porta aberta: ");
   Serial.println(door_open);
-
-  digitalWrite(LED_PIN, HIGH);
 }
