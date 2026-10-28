@@ -11,6 +11,7 @@
 #define DHT_PIN 27
 #define RS_PIN 14
 #define RELAY_PIN 26
+#define BUZZ_PIN 18
 
 // pinos dos leds
 #define ACCESS_GREEN_LED_PIN 32
