@@ -8,16 +8,15 @@
 #include <LiquidCrystal_I2C.h>
 
 // pinos
-#define DHT_PIN 27
-#define RS_PIN 14
-#define RELAY_PIN 26
-#define BUZZ_PIN 18
+#define DHT_PIN 4
+#define RS_PIN 26
+#define RELAY_PIN 14
+#define BUZZ_PIN 27
 
-// pinos dos leds
-#define ACCESS_GREEN_LED_PIN 32
-#define ACCESS_RED_LED_PIN 13
-#define DOOR_GREEN_LED_PIN 23
-#define DOOR_RED_LED_PIN 33
+// pinos do led
+#define GREEN_LED_PIN 25
+#define RED_LED_PIN 32
+#define BLUE_LED_PIN 33
 
 // pinos do rfid (rx não é utilizado)
 #define RX_PIN 17
