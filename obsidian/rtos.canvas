@@ -1,0 +1,22 @@
+{
+	"nodes":[
+		{"id":"d51137ce3447145b","type":"text","text":"loop\n- controle do estado da porta e led\n- atualizar display com valores dos sensores (apenas se nao estiver com alerta)\n- gerenciar tasks","x":-960,"y":86,"width":334,"height":229},
+		{"id":"a2dee3cc1036724a","type":"text","text":"alerta de temperatura\n- enviar alerta http\n- termina a task","x":44,"y":460,"width":266,"height":128},
+		{"id":"0bf87ece2b1aa00c","type":"text","text":"enviar dados para dashboard\n- colocar dados em um doc json\n- serializar \n- enviar\n- termina a task","x":1,"y":163,"width":345,"height":189},
+		{"id":"a99a124d919158b3","type":"text","text":"autenticar acesso\n- ler tag\n- comparar\n- envia para proxima task","x":-83,"y":-108,"width":260,"height":177},
+		{"id":"6b8b1418242f6b95","type":"text","text":"liberar acesso\n- escrever no display\n- ligar relé e destravar porta\n- aguardar 3 segundos\n- desligar relé\n- termina a task","x":420,"y":-231,"width":294,"height":212},
+		{"id":"0fed8fbf6495223b","type":"text","text":"negar acesso\n- escrever no display\n- aguardar 3 segundos\n- termina a task","x":420,"y":38,"width":288,"height":163},
+		{"id":"bb765ceef7a5b241","type":"text","text":"alerta de porta aberta\n- piscar led\n- apitar com buzzer\n- alertar no display\n- enviar alerta http\n- terminar apenas quando fechar a porta","x":-166,"y":800,"width":340,"height":230},
+		{"id":"46dcf11947124964","type":"text","text":"conexão wifi\n- tentar conectar wifi\n  ","x":-783,"y":851,"width":315,"height":109}
+	],
+	"edges":[
+		{"id":"4b45c87f043b4665","fromNode":"d51137ce3447145b","fromSide":"right","toNode":"a99a124d919158b3","toSide":"left","label":"ao identificar cartao"},
+		{"id":"5225558b982c590f","fromNode":"a99a124d919158b3","fromSide":"right","toNode":"6b8b1418242f6b95","toSide":"left","label":"liberado"},
+		{"id":"d3cdc81f5ae7bd3e","fromNode":"a99a124d919158b3","fromSide":"right","toNode":"0fed8fbf6495223b","toSide":"left","label":"negado"},
+		{"id":"29677458d4ef8e5f","fromNode":"d51137ce3447145b","fromSide":"right","toNode":"bb765ceef7a5b241","toSide":"left","label":"ao identificar porta aberta por +30s ou ilegalmente"},
+		{"id":"12d331873a984bd5","fromNode":"d51137ce3447145b","fromSide":"right","toNode":"0bf87ece2b1aa00c","toSide":"left","label":"a cada 20 s"},
+		{"id":"cc9f48509649c9ed","fromNode":"d51137ce3447145b","fromSide":"right","toNode":"a2dee3cc1036724a","toSide":"left","label":"ao identificar temp fora da faixa"},
+		{"id":"33ae7836b6878e45","fromNode":"d51137ce3447145b","fromSide":"top","toNode":"6b8b1418242f6b95","toSide":"top","label":"ao receber solicitação via dashboard"},
+		{"id":"165d8ee12983f570","fromNode":"d51137ce3447145b","fromSide":"bottom","toNode":"46dcf11947124964","toSide":"left","label":"tentar ate conectar"}
+	]
+}

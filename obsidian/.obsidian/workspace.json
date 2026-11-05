@@ -1,0 +1,204 @@
+{
+  "main": {
+    "id": "f2f4dcab7fac0221",
+    "type": "split",
+    "children": [
+      {
+        "id": "0b038f76e149061b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "bb5f1e1b14667170",
+            "type": "leaf",
+            "state": {
+              "type": "canvas",
+              "state": {
+                "file": "rtos.canvas",
+                "viewState": {
+                  "x": -135.78531959878572,
+                  "y": 356.83163070007896,
+                  "zoom": -1.294824263822917
+                }
+              },
+              "icon": "lucide-layout-dashboard",
+              "title": "rtos"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "4b56e91b59739eed",
+    "type": "split",
+    "children": [
+      {
+        "id": "8d986f5a1804a0aa",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "17318feea2915ff6",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de arquivos"
+            }
+          },
+          {
+            "id": "53512b6b4e386cbd",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Procurar"
+            }
+          },
+          {
+            "id": "3fc78d524e75deec",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "7543a223899adbe9",
+    "type": "split",
+    "children": [
+      {
+        "id": "ccd3889372a9a733",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ed92b7dee066e25b",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "dionisio-vortex.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Links inversos"
+            }
+          },
+          {
+            "id": "48f11b0210cd7514",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "dionisio-vortex.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Links de saída"
+            }
+          },
+          {
+            "id": "06db0edb4951fdb4",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "2f2635e435f1fe53",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas as propriedades"
+            }
+          },
+          {
+            "id": "41a578c1ef47a9f8",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "dionisio-vortex.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Sumário"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir a troca rápida": false,
+      "graph:Abrir visualização em gráfico": false,
+      "canvas:Criar novo canvas": false,
+      "daily-notes:Abrir a nota de hoje": false,
+      "templates:Inserir modelo": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Criar nova base": false,
+      "obsidian-kanban:Create new board": false
+    }
+  },
+  "active": "bb5f1e1b14667170",
+  "lastOpenFiles": [
+    "dionisio-vortex.md",
+    "rtos.canvas",
+    "Sem título.base",
+    "identify and separate components.md",
+    "Sem título",
+    "Bem-vindo.md"
+  ]
+}
