@@ -58,7 +58,6 @@ float humidity = 50.0;
 bool door_open;
 bool door_warn = false;
 bool auth_access = false;
-bool dsp_access_prio = false;
 
 // momento da atualização
 unsigned long update_time = 0;
@@ -90,15 +89,17 @@ void setup()
   Serial.begin(115200);
 
   // configuração dos pinos
-  pinMode(ACCESS_GREEN_LED_PIN, OUTPUT);
-  pinMode(ACCESS_RED_LED_PIN, OUTPUT);
-  pinMode(DOOR_GREEN_LED_PIN, OUTPUT);
-  pinMode(DOOR_RED_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(BLUE_LED_PIN, OUTPUT);
   pinMode(RS_PIN, INPUT_PULLUP);
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(BUZZ_PIN, OUTPUT);
 
   digitalWrite(RELAY_PIN, HIGH);
+
+  // desabilita o pino da cor azul do led, pois nao será utilizado
+  digitalWrite(BLUE_LED_PIN, HIGH);
 
   // inicializa e liga a luz do display
   lcd.init();
@@ -115,7 +116,7 @@ void setup()
   wifi_connect();
 
   // task para montar e enviar payload ao dashboard
-  xTaskCreateUniversal(send_payload, "send_payload", 10000, NULL, 1, &send_payload_handle, 0);
+  // xTaskCreateUniversal(send_payload, "send_payload", 10000, NULL, 1, &send_payload_handle, 0);
   // task para autorizar rfid
   xTaskCreateUniversal(rfid_auth, "rfid_auth", 10000, NULL, 1, &rfid_auth_handle, 1);
 }
@@ -137,29 +138,31 @@ void loop()
 
   if (door_warn)
   {
+    // TODO: checar se isso ta criando muitas tasks e por isso o delay
     xTaskCreateUniversal(door_warning, "door_warning", 10000, NULL, 2, &door_warning_handle, 0);
   }
 }
 
 void door_status()
 {
-  // porta aberta
+  // porta aberta -> indica com led vermelho
   if (digitalRead(RS_PIN) == HIGH)
   {
-    digitalWrite(DOOR_RED_LED_PIN, HIGH);
-    digitalWrite(DOOR_GREEN_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, HIGH);
+    digitalWrite(RED_LED_PIN, LOW);
     door_open = true;
   }
-  // porta fechada
+  // porta fechada ->  indica com led verde
   else
   {
-    digitalWrite(DOOR_GREEN_LED_PIN, HIGH);
-    digitalWrite(DOOR_RED_LED_PIN, LOW);
+    digitalWrite(RED_LED_PIN, HIGH);
+    digitalWrite(GREEN_LED_PIN, LOW);
 
     // flags
     door_open = false;
     door_warn = false;
 
+    // remove a autorização de acesso caso esteja autorizado e faça mais de 3 segundos desde o destravamento da porta
     if (millis() - unlock_time > 3000 && auth_access)
     {
       auth_access = false;
@@ -174,21 +177,6 @@ void update_display()
     lcd.setCursor(0, 0);
     // escreve a temperatura e umidade
     lcd.printf("T: %.1f  U: %.1f", dht.readTemperature(), dht.readHumidity());
-
-    // estado da porta
-    if (!dsp_access_prio)
-    {
-      if (door_open)
-      {
-        lcd.setCursor(0, 1);
-        lcd.print("  Porta aberta  ");
-      }
-      else
-      {
-        lcd.setCursor(0, 1);
-        lcd.print("  Porta fechada ");
-      }
-    }
   }
   else
   {
@@ -199,6 +187,8 @@ void update_display()
   }
 }
 
+// TODO: checar se a execução por tempo indefinido da autorização pode estar causando o delay no programa
+//       devido ou a leituras excessivas ou o proprio delay de 3 segundos da espera
 void rfid_auth(void *parameter)
 {
   for (;;)
@@ -242,6 +232,19 @@ void rfid_auth(void *parameter)
       {
         rfid.read();
       }
+
+      // espera 3 segundos
+      vTaskDelay(3000 / portTICK_PERIOD_MS);
+
+      // se o relé estiver ligado, desliga
+      if (digitalRead(RELAY_PIN) == LOW)
+      {
+        digitalWrite(RELAY_PIN, HIGH);
+      }
+
+      // limpa o aviso no display
+      lcd.setCursor(0, 1);
+      lcd.print("               ");
     }
   }
 }
@@ -252,46 +255,23 @@ void access_granted()
   unlock_time = millis();
   // indica acesso autorizado
   auth_access = true;
-  // adquire prioridade no display
-  dsp_access_prio = true;
 
-  // liga o relé e o led
+  // liga o relé
   digitalWrite(RELAY_PIN, LOW);
-  digitalWrite(ACCESS_GREEN_LED_PIN, HIGH);
 
   // feedback no display
   lcd.setCursor(0, 1);
   lcd.print(" Acesso liberado");
-
-  // desliga o relé e o led apos 3 segundos
-  vTaskDelay(3000 / portTICK_PERIOD_MS);
-  digitalWrite(RELAY_PIN, HIGH);
-  digitalWrite(ACCESS_GREEN_LED_PIN, LOW);
-
-  // remove prioridade no display
-  dsp_access_prio = false;
 }
 
 void access_denied()
 {
-  // adquire prioridade no display
-  dsp_access_prio = true;
-
-  // liga o led
-  digitalWrite(ACCESS_RED_LED_PIN, HIGH);
-
   // feedback no display
   lcd.setCursor(0, 1);
   lcd.print(" Acesso negado  ");
-
-  // desliga o led após 3 segundos
-  vTaskDelay(3000 / portTICK_PERIOD_MS);
-  digitalWrite(ACCESS_RED_LED_PIN, LOW);
-
-  // remove prioridade no display
-  dsp_access_prio = false;
 }
 
+// TODO: checar se contribui pro delay
 void send_payload(void *parameter)
 {
   for (;;)
@@ -300,7 +280,7 @@ void send_payload(void *parameter)
     temperature = dht.readTemperature();
     humidity = dht.readHumidity();
     String timestamp = DateTime.toString();
-    //  TODO: tratar caso de leitura inválida para enviar ao dashboard
+    // TODO: tratar caso de leitura inválida para enviar ao dashboard
 
     String payload;
     JsonDocument doc;
@@ -313,12 +293,15 @@ void send_payload(void *parameter)
     doc["timestamp"] = DateTime.toString();
     doc["connection_status"] = CONNECTION_STATUS;
     // TODO: adicionar campos do payload em falta
+    // TODO: eliminar campo e tratamento de timestamp -> adafruit IO ja registra esse dado
 
     Serial.print("hora de envio: ");
     Serial.println(DateTime.toString());
 
     serializeJson(doc, payload);
 
+    // NOTE: se contribuir para o delay, modificar para uma chamada com millis a cada 20 segundos
+    //       no loop principal
     // envia a cada 20 segundos
     vTaskDelay(20000 / portTICK_PERIOD_MS);
   }
@@ -341,6 +324,7 @@ void wifi_connect()
     }
   }
 
+  // TODO: remover
   // timezone GMT-3
   DateTime.setTimeZone("<-03>3");
   // inicia o tempo e sincroniza com a timezone definida
@@ -357,6 +341,7 @@ void warnings()
   }
 }
 
+// TODO: checar se causa delay por multiplas chamadas
 void door_warning(void *parameter)
 {
   while (door_warn)
@@ -374,3 +359,10 @@ void door_warning(void *parameter)
 
   vTaskDelete(NULL);
 }
+
+// TODO: buzzer para acesso
+// TODO: led para status da porta
+// TODO: mudanca no display (apenas acesso e mensagem de alerta)
+// TODO: integração com dashboard
+// TODO: identificar e resolver problema de delay (provavel problema com o rtos,
+//       gerenciar melhor os nucleos e os tempos de delay nas tasks)
