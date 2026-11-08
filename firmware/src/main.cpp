@@ -32,6 +32,12 @@
 #define DEVICE_ID "dionisio-01"
 #define CONNECTION_STATUS "conectado"
 
+// frequencia de notas musicais
+#define NOTE_C5 523
+#define NOTE_CS5 554
+#define NOTE_E5 659
+#define NOTE_G5 784
+
 // nome da rede wifi
 String ssid = "whimsygarden";
 // senha da rede wifi
@@ -253,6 +259,11 @@ void access_granted()
   access_grnt = true;
   locked = false;
 
+  // feedback sonoro
+  tone(BUZZ_PIN, NOTE_C5, 200);
+  tone(BUZZ_PIN, NOTE_E5, 200);
+  tone(BUZZ_PIN, NOTE_G5, 200);
+
   // liga o relé
   digitalWrite(RELAY_PIN, LOW);
 
@@ -266,6 +277,10 @@ void access_granted()
 void access_denied()
 {
   access_dnd = true;
+
+  // feedback sonoro
+  tone(BUZZ_PIN, NOTE_CS5, 200);
+  tone(BUZZ_PIN, NOTE_C5, 200);
 
   // espera 3 segundos
   vTaskDelay(3000 / portTICK_PERIOD_MS);
@@ -330,12 +345,13 @@ void door_warning(void *parameter)
       // apaga o led verde se estiver aceso
       digitalWrite(GREEN_LED_PIN, HIGH);
 
-      // liga o led vermelho
+      // liga o led vermelho e toca o buzzer
       digitalWrite(RED_LED_PIN, LOW);
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
 
       // desliga o led vermelho
       digitalWrite(RED_LED_PIN, HIGH);
+      tone(BUZZ_PIN, NOTE_G5, 500);
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     else
@@ -345,9 +361,9 @@ void door_warning(void *parameter)
   }
 }
 
-// TODO: buzzer para acesso
+// TODO: buzzer para acesso | ok!
 // TODO: led para status da porta | ok!
 // TODO: mudanca no display (apenas acesso e mensagem de alerta) | ok!
 // TODO: integração com dashboard
-// TODO: identificar e resolver problema de delay (provavel problema com o rtos,
+// TODO: identificar e resolver problema de delay (provavel problema com o rtos, | ok!
 //       gerenciar melhor os nucleos e os tempos de delay nas tasks)
