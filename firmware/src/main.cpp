@@ -13,9 +13,9 @@
 #define BUZZ_PIN 27
 
 // pinos do led
-#define GREEN_LED_PIN 25
+#define GREEN_LED_PIN 33
 #define RED_LED_PIN 32
-#define BLUE_LED_PIN 33
+#define BLUE_LED_PIN 25
 
 // pinos do rfid (rx não é utilizado)
 #define RX_PIN 17
@@ -53,9 +53,14 @@ HardwareSerial rfid(1);
 float temperature = 15.0;
 float humidity = 50.0;
 
-// flags
+// flags porta
 bool door_open;
-bool auth_access = false;
+bool locked = true;
+bool door_warn = false;
+
+// flags acesso
+bool access_grnt = false;
+bool access_dnd = false;
 
 // momento da atualização
 unsigned long update_time = 0;
@@ -71,7 +76,7 @@ TaskHandle_t temp_warning_handle = NULL;
 
 // funcoes das tasks
 void door_status();
-void update_display();
+void update_display_values();
 void rfid_auth(void *parameter);
 void access_granted();
 void access_denied();
@@ -125,7 +130,7 @@ void loop()
   // estado da porta
   door_status();
   // display
-  update_display();
+  update_display_values();
 }
 
 void door_status()
@@ -146,20 +151,49 @@ void door_status()
     // flags
     door_open = false;
 
-    // remove a autorização de acesso caso esteja autorizado e faça mais de 3 segundos desde o destravamento da porta
-    if (millis() - unlock_time > 3000 && auth_access)
+    if (!access_grnt)
     {
-      auth_access = false;
+      locked = true;
+    }
+
+    // se a porta foi fechada, desativa o alerta
+    if (door_warn)
+    {
+      door_warn = false;
     }
   }
 }
 
-void update_display()
+void update_display_values()
 {
-  // posiciona o cursor
   lcd.setCursor(0, 0);
   // escreve a temperatura e umidade
   lcd.printf("T: %.1f  U: %.1f", dht.readTemperature(), dht.readHumidity());
+
+  if (door_warn)
+  {
+    // avisa no display
+    lcd.setCursor(0, 1);
+    lcd.print(" Feche a porta! ");
+  }
+  else if (access_grnt)
+  {
+    // feedback no display
+    lcd.setCursor(0, 1);
+    lcd.print("Acesso liberado!");
+  }
+  else if (access_dnd)
+  {
+    // feedback no display
+    lcd.setCursor(0, 1);
+    lcd.print(" Acesso negado! ");
+  }
+  else
+  {
+    // limpa segunda linha do display
+    lcd.setCursor(0, 1);
+    lcd.print("                ");
+  }
 }
 
 void rfid_auth(void *parameter)
@@ -191,18 +225,12 @@ void rfid_auth(void *parameter)
       // compara a tag lida com a tag autorizada para permitir ou negar o acesso
       if (memcmp(tag, card_tag, sizeof(tag)) == 0)
       {
-        Serial.println("acesso liberado");
         access_granted();
       }
       else
       {
-        Serial.println("acesso negado");
         access_denied();
       }
-
-      // limpa o aviso no display
-      lcd.setCursor(0, 1);
-      lcd.print("               ");
 
       // descartar leituras adicionais
       while (rfid.available())
@@ -222,28 +250,27 @@ void access_granted()
   // salva o momento em que a porta foi destrancada
   unlock_time = millis();
   // indica acesso autorizado
-  auth_access = true;
+  access_grnt = true;
+  locked = false;
 
   // liga o relé
   digitalWrite(RELAY_PIN, LOW);
 
-  // feedback no display
-  lcd.setCursor(0, 1);
-  lcd.print(" Acesso liberado");
-
   // espera 3 segundos
   vTaskDelay(3000 / portTICK_PERIOD_MS);
   digitalWrite(RELAY_PIN, HIGH);
+
+  access_grnt = false;
 }
 
 void access_denied()
 {
-  // feedback no display
-  lcd.setCursor(0, 1);
-  lcd.print(" Acesso negado  ");
+  access_dnd = true;
 
   // espera 3 segundos
   vTaskDelay(3000 / portTICK_PERIOD_MS);
+
+  access_dnd = false;
 }
 
 // TODO: checar se contribui pro delay
@@ -286,7 +313,6 @@ void wifi_connect(void *parameter)
 
     while (WiFi.status() != WL_CONNECTED)
     {
-      Serial.print(".");
       vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     Serial.println("\nConectado à rede Wifi.");
@@ -297,20 +323,16 @@ void door_warning(void *parameter)
 {
   for (;;)
   {
-    if (door_open && (millis() - unlock_time > 30000 || !auth_access))
+    if (door_open && (millis() - unlock_time > 30000 || locked))
     {
+      door_warn = true;
+
       // apaga o led verde se estiver aceso
       digitalWrite(GREEN_LED_PIN, HIGH);
 
-      // avisa no display
-      lcd.setCursor(0, 0);
-      lcd.print("  Favor fechar  ");
-      lcd.setCursor(0, 1);
-      lcd.print("    a porta!    ");
-
       // liga o led vermelho
       digitalWrite(RED_LED_PIN, LOW);
-      vTaskDelay(500 / portTICK_PERIOD_MS);
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
 
       // desliga o led vermelho
       digitalWrite(RED_LED_PIN, HIGH);
