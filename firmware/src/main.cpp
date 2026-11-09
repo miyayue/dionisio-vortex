@@ -1,10 +1,10 @@
 #include <Arduino.h>
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
 #include <DHT.h>
+#include <WiFi.h>
 #include <HardwareSerial.h>
 #include <LiquidCrystal_I2C.h>
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
 
 // pinos
 #define DHT_PIN 4
@@ -56,8 +56,8 @@ DHT dht(DHT_PIN, DHT_TYPE);
 // configura o serial para o rfid
 HardwareSerial rfid(1);
 
-float temperature = 15.0;
-float humidity = 50.0;
+float temperature;
+float humidity;
 
 // flags porta
 bool door_open;
@@ -78,17 +78,18 @@ TaskHandle_t wifi_connect_handle = NULL;
 TaskHandle_t rfid_auth_handle = NULL;
 TaskHandle_t door_warning_handle = NULL;
 TaskHandle_t send_payload_handle = NULL;
-TaskHandle_t temp_warning_handle = NULL;
+TaskHandle_t remote_handle = NULL;
 
 // funcoes das tasks
 void door_status();
-void update_display_values();
+void update_display();
 void rfid_auth(void *parameter);
 void access_granted();
 void access_denied();
 void send_payload(void *parameter);
 void wifi_connect(void *parameter);
 void door_warning(void *parameter);
+void remote_access(void *parameter);
 
 void setup()
 {
@@ -122,9 +123,20 @@ void setup()
   door_status();
 
   // task para conectar ao wifi
-  xTaskCreateUniversal(wifi_connect, "wifi_connect", 5000, NULL, 1, &wifi_connect_handle, 0);
+  // começa a comunicação wifi
+  WiFi.begin(ssid, pswd);
+  Serial.print("Conectando com a rede WiFi");
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+  Serial.println("\nConectado à rede Wifi.");
+
   // task para montar e enviar payload ao dashboard
-  // xTaskCreateUniversal(send_payload, "send_payload", 10000, NULL, 1, &send_payload_handle, 0);
+  xTaskCreateUniversal(send_payload, "send_payload", 10000, NULL, 1, &send_payload_handle, 1);
+  // task para checar acesso remoto
+  xTaskCreateUniversal(remote_access, "remote_access", 10000, NULL, 1, &remote_handle, 0);
   // task para autorizar rfid
   xTaskCreateUniversal(rfid_auth, "rfid_auth", 5000, NULL, 1, &rfid_auth_handle, 1);
   // task para alertar porta aberta
@@ -136,7 +148,19 @@ void loop()
   // estado da porta
   door_status();
   // display
-  update_display_values();
+  update_display();
+
+  if (WiFi.status() == WL_DISCONNECTED)
+  {
+    WiFi.begin(ssid, pswd);
+    Serial.print("Conectando com a rede WiFi");
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    Serial.println("\nConectado à rede Wifi.");
+  }
 }
 
 void door_status()
@@ -170,11 +194,14 @@ void door_status()
   }
 }
 
-void update_display_values()
+void update_display()
 {
+  temperature = dht.readTemperature();
+  humidity = dht.readHumidity();
+
   lcd.setCursor(0, 0);
   // escreve a temperatura e umidade
-  lcd.printf("T: %.1f  U: %.1f", dht.readTemperature(), dht.readHumidity());
+  lcd.printf("T: %.1f  U: %.1f", temperature, humidity);
 
   if (door_warn)
   {
@@ -288,49 +315,80 @@ void access_denied()
   access_dnd = false;
 }
 
-// TODO: checar se contribui pro delay
 void send_payload(void *parameter)
 {
   for (;;)
   {
-    // lê os valores medidos pelo dht
-    temperature = dht.readTemperature();
-    humidity = dht.readHumidity();
-    // TODO: tratar caso de leitura inválida para enviar ao dashboard
-
     String payload;
     JsonDocument doc;
+    JsonDocument arr;
 
-    // campos do payload
-    doc["device_id"] = DEVICE_ID;
-    doc["temperature"] = temperature;
-    doc["humidity"] = humidity;
-    doc["door_open"] = door_open;
-    doc["connection_status"] = CONNECTION_STATUS;
-    // TODO: adicionar campos do payload em falta
+    char temp[10];
+    sprintf(temp, "%.1f", temperature);
+
+    char hum[10];
+    sprintf(hum, "%.1f", humidity);
+
+    char door[10];
+    sprintf(door, "%.1f", door_open);
+
+    String keys[] = {"dispositivo", "temperatura", "umidade", "porta-aberta", "status-conexao"};
+    String values[] = {DEVICE_ID, temp, hum, door, CONNECTION_STATUS};
+
+    for (int i = 0; i < 5; i++)
+    {
+      arr["key"] = keys[i];
+      arr["value"] = values[i];
+
+      doc["feeds"].add(arr);
+    }
 
     serializeJson(doc, payload);
 
-    // NOTE: se contribuir para o delay, modificar para uma chamada com millis a cada 20 segundos
-    //       no loop principal
+    // criando um client http
+    HTTPClient http;
+    // conexão http
+    http.begin("https://io.adafruit.com/api/v2/letholanda/groups/dionisio/data");
+    // enviando via http
+    http.addHeader("Content-Type", "application/json");
+    int http_response_code = http.POST(payload);
+    http.end();
+
+    Serial.print("Response code: ");
+    Serial.println(http_response_code);
+
     // envia a cada 20 segundos
     vTaskDelay(20000 / portTICK_PERIOD_MS);
   }
 }
 
-void wifi_connect(void *parameter)
+void remote_access(void *parameter)
 {
   for (;;)
   {
-    // começa a comunicação wifi
-    WiFi.begin(ssid, pswd);
-    Serial.print("Conectando com a rede WiFi");
+    // criando um client http
+    HTTPClient http;
 
-    while (WiFi.status() != WL_CONNECTED)
+    // conexão http
+    http.begin("https://io.adafruit.com/api/v2/letholanda/feeds/liberar-porta/data/retain");
+    // enviando via http
+    http.addHeader("Content-Type", "application/json");
+    int http_response_code = http.GET();
+    String val = http.getString();
+    val.trim();
+    if (val == "1,,,")
     {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
+      access_granted();
     }
-    Serial.println("\nConectado à rede Wifi.");
+
+    Serial.println(val);
+
+    http.end();
+
+    Serial.print("Response code: ");
+    Serial.println(http_response_code);
+
+    vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 }
 
@@ -360,10 +418,3 @@ void door_warning(void *parameter)
     }
   }
 }
-
-// TODO: buzzer para acesso | ok!
-// TODO: led para status da porta | ok!
-// TODO: mudanca no display (apenas acesso e mensagem de alerta) | ok!
-// TODO: integração com dashboard
-// TODO: identificar e resolver problema de delay (provavel problema com o rtos, | ok!
-//       gerenciar melhor os nucleos e os tempos de delay nas tasks)
