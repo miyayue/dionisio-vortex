@@ -39,9 +39,9 @@
 #define NOTE_G5 784
 
 // nome da rede wifi
-String ssid = "whimsygarden";
+String ssid = "";
 // senha da rede wifi
-String pswd = "wifi6@alares";
+String pswd = "";
 
 // tag do cartão da adega
 uint8_t card_tag[] = {0x02, 0x36, 0x31, 0x30, 0x30, 0x35, 0x32, 0x30, 0x39, 0x36, 0x34, 0x35, 0x45, 0x03};
